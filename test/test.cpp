@@ -19,6 +19,9 @@ TEST_CASE("Simple expressions") {
     REQUIRE(AreSame(ctx.parseExpression("2 + 2 * 4").getResult(), 10.0));
     REQUIRE(AreSame(ctx.parseExpression("2 + 2 * -4").getResult(), -6.0));
     REQUIRE(AreSame(ctx.parseExpression("2.003 * 1000").getResult(), 2003.0));
+    REQUIRE(AreSame(ctx.parseExpression(".1234").getResult(), 0.1234));
+    REQUIRE(AreSame(ctx.parseExpression("123.1234").getResult(), 123.1234));
+    REQUIRE(AreSame(ctx.parseExpression("-(2+2)").getResult(), -4));
 }
 
 TEST_CASE("Built-in functions") {
@@ -33,9 +36,7 @@ TEST_CASE("Custom functions") {
     PicoMath ctx;
     ctx.addFunction("multiply") = [](size_t argc, const argument_list_t &args) -> Result {
         if (argc != 2) {
-            return {
-                "Invalid number of arguments"
-            };
+            return {"Invalid number of arguments"};
         }
         return {args[0] * args[1]};
     };
@@ -72,6 +73,8 @@ TEST_CASE("Invalid expressions") {
     REQUIRE(ctx.parseExpression("2px").isError());
     REQUIRE(ctx.parseExpression("cos(").isError());
     REQUIRE(ctx.parseExpression("cos(1,").isError());
+    REQUIRE(ctx.parseExpression("((((((((()))").isError());
+    REQUIRE(ctx.parseExpression("{").isError());
 }
 
 TEST_CASE("Multi-expressions") {
@@ -86,4 +89,26 @@ TEST_CASE("Multi-expressions") {
     REQUIRE(AreSame(out.getResult(), 0));
     REQUIRE(ctx.parseNext(out));
     REQUIRE(AreSame(out.getResult(), M_PI));
+}
+
+TEST_CASE("Variables") {
+    PicoMath ctx;
+    auto &   x = ctx.addVariable("x");
+    auto &   y = ctx.addVariable("y");
+
+    x = 1;
+    y = 1;
+    REQUIRE(AreSame(ctx.parseExpression("x*x + y*y").getResult(), 2.0));
+
+    x = 2;
+    y = 1;
+    REQUIRE(AreSame(ctx.parseExpression("x*x + y*y").getResult(), 5.0));
+
+    x = 1;
+    y = 2;
+    REQUIRE(AreSame(ctx.parseExpression("x*x + y*y").getResult(), 5.0));
+
+    x = 0;
+    y = 2;
+    REQUIRE(AreSame(ctx.parseExpression("x*x + y*y").getResult(), 4.0));
 }

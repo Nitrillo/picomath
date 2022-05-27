@@ -113,37 +113,37 @@ class PicoMath {
         addVariable("e")  = static_cast<number_t>(M_E);
 
         // Built-in functions
-        functions["sin"] = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("sin") = [](size_t argc, const argument_list_t &args) -> Result {
             if (argc != 1) {
                 return {"Only one argument needed"};
             }
             return sin(args[0]);
         };
-        functions["cos"] = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("cos") = [](size_t argc, const argument_list_t &args) -> Result {
             if (argc != 1) {
                 return {"Only one argument needed"};
             }
             return cos(args[0]);
         };
-        functions["tan"] = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("tan") = [](size_t argc, const argument_list_t &args) -> Result {
             if (argc != 1) {
                 return {"Only one argument needed"};
             }
             return tan(args[0]);
         };
-        functions["sqrt"] = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("sqrt") = [](size_t argc, const argument_list_t &args) -> Result {
             if (argc != 1) {
                 return {"Only one argument needed"};
             }
             return sqrt(args[0]);
         };
-        functions["atan2"] = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("atan2") = [](size_t argc, const argument_list_t &args) -> Result {
             if (argc != 2) {
                 return {"Two arguments needed"};
             }
             return atan2(args[0], args[1]);
         };
-        functions["min"] = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("min") = [](size_t argc, const argument_list_t &args) -> Result {
             number_t result = std::numeric_limits<number_t>::max();
             size_t   i      = 0;
             while (i < argc) {
@@ -152,7 +152,7 @@ class PicoMath {
             }
             return result;
         };
-        functions["max"] = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("max") = [](size_t argc, const argument_list_t &args) -> Result {
             number_t result = std::numeric_limits<number_t>::min();
             size_t   i      = 0;
             while (i < argc) {
@@ -266,8 +266,7 @@ class PicoMath {
         if (isDigit() || peek() == '.') {
             // Number
             return parseNumber();
-        }
-        if (peek() == '(') {
+        } else if (peek() == '(') {
             // Parenthesized expression
             consume();
             consumeSpace();
@@ -282,7 +281,7 @@ class PicoMath {
             }
             consume();
             return exp;
-        } if (peek() == '-' || peek() == '+') {
+        } else if (peek() == '-' || peek() == '+') {
             // Prefix unary operator
             char op = consume();
             consumeSpace();
@@ -320,7 +319,7 @@ class PicoMath {
         }
     }
 
-    auto parseNumber() -> Result {
+    inline auto parseNumber() -> Result {
         number_t ret = 0;
 
         while (isDigit()) {

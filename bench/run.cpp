@@ -1,11 +1,24 @@
+#include <algorithm>
 #include <benchmark/benchmark.h>
+#include <cctype>
 #include <picomath.hpp>
+#include <string>
 
 static void BM_simpleExpression(benchmark::State &state) // NOLINT google-runtime-references
 {
     picomath::PicoMath ctx;
     while (state.KeepRunning()) {
-        benchmark::DoNotOptimize(ctx.parseExpression("2 + 2"));
+        benchmark::DoNotOptimize(ctx.parseExpression("(2 + 2) * 4 / 10 - 20.02"));
+        benchmark::ClobberMemory();
+    }
+}
+
+static void BM_baseLine(benchmark::State &state) // NOLINT google-runtime-references
+{
+    std::string data = "(2 + 2) * 4 / 10 - 20.02";
+    while (state.KeepRunning()) {
+        benchmark::DoNotOptimize(
+            std::transform(data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); }));
         benchmark::ClobberMemory();
     }
 }
@@ -44,6 +57,8 @@ static void BM_complexExpression(benchmark::State &state) // NOLINT google-runti
 }
 
 auto main(int argc, char *argv[]) -> int {
+    benchmark::RegisterBenchmark("Baseline tolower",
+                                 BM_baseLine); // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
     benchmark::RegisterBenchmark("Simple expression",
                                  BM_simpleExpression); // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
     benchmark::RegisterBenchmark("Built-in functions",
