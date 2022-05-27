@@ -33,10 +33,10 @@ class Result {
     std::unique_ptr<Error> error;
 
   public:
-    Result(number_t result) : result(result) {
+    Result(number_t result) : result(result) { // NOLINT
     }
 
-    Result(std::string &&description) : result(0) {
+    Result(std::string &&description) : result(0) { // NOLINT
         error = std::make_unique<Error>(std::move(description));
     }
 
@@ -56,6 +56,22 @@ class Result {
         return result;
     }
 };
+
+#define PM_FUNCTION_1(fun)                                                                                             \
+    [](size_t argc, const argument_list_t &args) -> Result {                                                           \
+        if (argc != 1) {                                                                                               \
+            return {"One argument needed"};                                                                            \
+        }                                                                                                              \
+        return fun(args[0]);                                                                                           \
+    };
+
+#define PM_FUNCTION_2(fun)                                                                                             \
+    [](size_t argc, const argument_list_t &args) -> Result {                                                           \
+        if (argc != 2) {                                                                                               \
+            return {"Two arguments needed"};                                                                           \
+        }                                                                                                              \
+        return fun(args[0], args[1]);                                                                                  \
+    };
 
 class PicoMath {
 
@@ -113,37 +129,25 @@ class PicoMath {
         addVariable("e")  = static_cast<number_t>(M_E);
 
         // Built-in functions
-        addFunction("sin") = [](size_t argc, const argument_list_t &args) -> Result {
-            if (argc != 1) {
-                return {"Only one argument needed"};
-            }
-            return sin(args[0]);
-        };
-        addFunction("cos") = [](size_t argc, const argument_list_t &args) -> Result {
-            if (argc != 1) {
-                return {"Only one argument needed"};
-            }
-            return cos(args[0]);
-        };
-        addFunction("tan") = [](size_t argc, const argument_list_t &args) -> Result {
-            if (argc != 1) {
-                return {"Only one argument needed"};
-            }
-            return tan(args[0]);
-        };
-        addFunction("sqrt") = [](size_t argc, const argument_list_t &args) -> Result {
-            if (argc != 1) {
-                return {"Only one argument needed"};
-            }
-            return sqrt(args[0]);
-        };
-        addFunction("atan2") = [](size_t argc, const argument_list_t &args) -> Result {
-            if (argc != 2) {
-                return {"Two arguments needed"};
-            }
-            return atan2(args[0], args[1]);
-        };
-        addFunction("min") = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("abs")   = PM_FUNCTION_1(std::abs);
+        addFunction("ceil")  = PM_FUNCTION_1(std::ceil);
+        addFunction("floor") = PM_FUNCTION_1(std::floor);
+        addFunction("round") = PM_FUNCTION_1(std::round);
+        addFunction("round") = PM_FUNCTION_1(std::round);
+        addFunction("ln")    = PM_FUNCTION_1(std::log);
+        addFunction("log")   = PM_FUNCTION_1(std::log10);
+        addFunction("cos")   = PM_FUNCTION_1(std::cos);
+        addFunction("sin")   = PM_FUNCTION_1(std::sin);
+        addFunction("acos")  = PM_FUNCTION_1(std::acos);
+        addFunction("asin")  = PM_FUNCTION_1(std::asin);
+        addFunction("cosh")  = PM_FUNCTION_1(std::cosh);
+        addFunction("sinh")  = PM_FUNCTION_1(std::sinh);
+        addFunction("tan")   = PM_FUNCTION_1(std::tan);
+        addFunction("tanh")  = PM_FUNCTION_1(std::tanh);
+        addFunction("sqrt")  = PM_FUNCTION_1(std::sqrt);
+        addFunction("atan2") = PM_FUNCTION_2(std::atan2);
+        addFunction("pow")   = PM_FUNCTION_2(std::pow);
+        addFunction("min")   = [](size_t argc, const argument_list_t &args) -> Result {
             number_t result = std::numeric_limits<number_t>::max();
             size_t   i      = 0;
             while (i < argc) {

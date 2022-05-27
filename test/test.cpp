@@ -22,6 +22,8 @@ TEST_CASE("Simple expressions") {
     REQUIRE(AreSame(ctx.parseExpression(".1234").getResult(), 0.1234));
     REQUIRE(AreSame(ctx.parseExpression("123.1234").getResult(), 123.1234));
     REQUIRE(AreSame(ctx.parseExpression("-(2+2)").getResult(), -4));
+    REQUIRE(ctx.parseExpression("(2+2)").isOk());
+    REQUIRE_FALSE(ctx.parseExpression("(2+2)").isError());
 }
 
 TEST_CASE("Built-in functions") {
@@ -70,11 +72,16 @@ TEST_CASE("Invalid expressions") {
     REQUIRE(ctx.parseExpression("3*").isError());
     REQUIRE(ctx.parseExpression("3 /").isError());
     REQUIRE(ctx.parseExpression("notfound").isError());
+    REQUIRE(ctx.parseExpression("notfound()").isError());
+    REQUIRE(ctx.parseExpression("notfound(").isError());
     REQUIRE(ctx.parseExpression("2px").isError());
     REQUIRE(ctx.parseExpression("cos(").isError());
     REQUIRE(ctx.parseExpression("cos(1,").isError());
     REQUIRE(ctx.parseExpression("((((((((()))").isError());
     REQUIRE(ctx.parseExpression("{").isError());
+    REQUIRE(ctx.parseExpression("-23px").isError());
+    REQUIRE(ctx.parseExpression("cos(1,2,3,4,5,6,7,8,9,10)").isError());
+    REQUIRE(ctx.parseExpression("-(2*").isError());
 }
 
 TEST_CASE("Multi-expressions") {
@@ -111,4 +118,6 @@ TEST_CASE("Variables") {
     x = 0;
     y = 2;
     REQUIRE(AreSame(ctx.parseExpression("x*x + y*y").getResult(), 4.0));
+    REQUIRE(AreSame(ctx.parseExpression("max(x,y) * 2").getResult(), 4.0));
+    REQUIRE(AreSame(ctx.parseExpression("min(x,y) * 2").getResult(), 0.0));
 }
