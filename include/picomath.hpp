@@ -136,7 +136,6 @@ class PicoMath {
         addFunction("ceil")  = PM_FUNCTION_1(std::ceil);
         addFunction("floor") = PM_FUNCTION_1(std::floor);
         addFunction("round") = PM_FUNCTION_1(std::round);
-        addFunction("round") = PM_FUNCTION_1(std::round);
         addFunction("ln")    = PM_FUNCTION_1(std::log);
         addFunction("log")   = PM_FUNCTION_1(std::log10);
         addFunction("cos")   = PM_FUNCTION_1(std::cos);
