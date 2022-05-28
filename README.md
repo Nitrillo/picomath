@@ -108,7 +108,7 @@ make test
 ## Benchmarks
 
 PicoMath is pretty fast as it evaluates the expression without allocating memory.
-Compared to a basic strtolower of the string `(2 + 2) * 4 / 10 - 20.02`, the evaluation of the same string takes 30% more time.
+Compared to a basic strtolower of the string `(2 + 2) * 4 / 10 - 20.02`, the evaluation of the same string takes 50% more time.
 
 ```
 Run on (12 X 2900 MHz CPU s)
@@ -120,8 +120,8 @@ CPU Caches:
 ----------------------------------------------------------
 Benchmark                   Time           CPU Iterations
 ----------------------------------------------------------
-Baseline tolower           46 ns         46 ns   11899500
-Simple expression          60 ns         60 ns   10933912
+Baseline tolower           47 ns         47 ns   11337134
+Simple expression          70 ns         70 ns    9441979
 ```
 
 PicoMath was designed to evaluate a expression in one pass, so to reevaluate the same expression requires parsing again the expression.
