@@ -1,21 +1,83 @@
-Skeleton for C++ header-only libraries that can be included into other C++ projects. This repository itself is a helper library. To use it for a specific project, edit filenames and tests accordingly.
+# PicoMath
 
-[![Build Status](https://travis-ci.com/mapbox/hpp-skel.svg?branch=master)](https://travis-ci.com/mapbox/hpp-skel)
-[![codecov](https://codecov.io/gh/mapbox/hpp-skel/branch/master/graph/badge.svg)](https://codecov.io/gh/mapbox/hpp-skel)
+PicoMath is a header only C++ library to evaluate math expressions.
 
-![dancing skel](https://raw.githubusercontent.com/mapbox/cpp/master/assets/hpp-skel-readme_blue.png)
+Initially created to evaluate CSS-like expressions for the Shinobit Engine, a proprietary 2D game engine used in the MMO browser game [GoBattle.io](http://gobattle.io)
+
+[![Build Status](https://travis-ci.com/nitrillo/picomath.svg?branch=master)](https://travis-ci.com/nitrillo/picomath)
+[![codecov](https://codecov.io/gh/nitrillo/picomath/branch/master/graph/badge.svg)](https://codecov.io/gh/nitrillo/picomath)
+
+## Features
+* Header only C++ library: easy integration in your project
+* Very simple and fast
+* Zero allocations in the hot path
+    * Uses C++17 `std::string_view` to lookup variables without copying strings
+* Single pass: The evaluation is performed while parsing.
+* Built-in math functions (e.g. `cos(pi)`)
+* Custom units and percentages (e.g `100% - 10px`)
+* User defined variables (e.g. `(x + y) * (x + y)`)
+* User defined functions with multiple arguments (e.g. `avg(10, 20, 30)`)
+* Uses standard C++ containers
 
 ## Usage
 
+Simple evaluation:
 ```cpp
-#include <include/hello_world.hpp>
+#include <picomath.hpp>
 
-using namespace hello_world;
+using namespace picomath;
 
-// exclaim a string
-std::string value = exclaim("hello");
-std::clog << value; // => hello!
+PicoMath pm;
+
+auto result = pm.parseExpression("sqrt(100 - 20)");
+if (result.isOk()) {
+    double r = result.getResult();
+    ...
+}
+
 ```
+
+Using variables:
+```cpp
+#include <picomath.hpp>
+
+using namespace picomath;
+
+PicoMath pm;
+auto &x = pm.addVariable("x");
+
+x = 0.0;
+while (x < 100.0) {
+    // Same expression evaluated with different values of `x`
+    auto result = pm.parseExpression("x * x * x");
+    if (result.isOk()) {
+        double r = result.getResult();
+        ...
+    }
+    x += 1.0;
+}
+
+```
+
+Using units:
+```cpp
+#include <picomath.hpp>
+
+using namespace picomath;
+
+PicoMath pm;
+pm.addUnit("km") = 1000.0;
+pm.addUnit("cm") = 0.01;
+
+auto result = pm.parseExpression("0.5km + 20cm");
+if (result.isOk()) {
+    double r = result.getResult();
+    ...
+}
+
+```
+
+
 
 ## Test
 
@@ -38,117 +100,32 @@ make debug
 make test
 ```
 
-Enable additional sanitizers to catch hard-to-find bugs, for example:
-
-```shell
-export LDFLAGS="-fsanitize=address,undefined,integer"
-export CXXFLAGS="-fsanitize=address,undefined,integer"
-
-make
-```
-
-## Customize
-Easily use this skeleton as a starting off point.
-
-### Start new project
-```
-# Clone hpp-skel locally
-
-git clone git@github.com:mapbox/hpp-skel.git
-cd hpp-skel/
-
-# Create your new repo on GitHub and have the remote repo url handy for liftoff
-# Then run the liftoff script from within your local hpp-skel root directory.
-#
-# This will:
-# - prompt you for the new name of your project and the new remote repo url
-# - automatically create a new directory for your new project repo
-# - create a new branch called "hpp-skel-port" within your new repo directory
-# - add, commit, and push that branch to your new repo
-
-./scripts/liftoff.sh
-
-```
-
-### Add custom code
-Once your project has ported hpp-skel, follow these steps to integrate your own code:
-
-- Create a dir in `./include` to hold your custom code. See the example code within [`./include`](https://github.com/mapbox/hpp-skel/tree/master/include) for reference.
-- Create a new file within your new directory, and add your custom method or class.
-- Create a module header file (see [hello_world.hpp](https://github.com/mapbox/hpp-skel/blob/master/include/hello_world.hpp)), and `#include` your new method or class. Make sure this file matches the name of the directory you created in the first step above.
-- Run `make` and see what surprises await on your new journey :boat:
-- If it compiles succesfully, congrats :tada: If not, dont fret. Take a breath and read the error message.
-- To start putting your header lib to work, setup a test to make sure it is working as expected. 
-
-### Setup tests
-Since header-only libraries are _not_ normally compiled themselves, to test them you need to [#include](https://github.com/mapbox/cpp/blob/master/glossary.md#include) them in a `.cpp` file (aka a [translation unit](https://github.com/mapbox/cpp/blob/master/glossary.md#translation-unit)) to compile and run their code. We recommend using [Catch](https://github.com/catchorg/Catch2) to make writing this `.cpp` file easy.
-
-- Create a file in `/test` directory, and add the following (be sure to update relevant lines with the name of the header you created above):
-``` cpp
-#include <your_header_here.hpp>
-#define CATCH_CONFIG_MAIN
-#include <catch.hpp>
-
-TEST_CASE("test_my_header")
-{
-    // Your test logic here
-}
-```
-- Fill in the TEST_CASE with relevant [Catch](https://github.com/catchorg/Catch2) logic (see [test.cpp](https://github.com/mapbox/hpp-skel/blob/master/test/test.cpp) for examples).
-- Tip: When calling your header method/class, make sure the namespace matches your header. For example
-``` cpp
-// "hello_world" is the namespace
-// "exclaim" is the method 
-
-std::string value = hello_world::exclaim("hello");
-```
-- Run `make test` to compile and run your test
 
 ## Benchmarks
-This skeleton uses [Google Benchmark](https://github.com/google/benchmark) to measure performance, and includes a [couple benchmark tests](https://github.com/mapbox/hpp-skel/blob/master/bench/run.cpp) to get you up and running quickly:
-- `BM_exlaim()`: Pretty barebone, simply testing string creation
-- `BM_expensive()`: Expensive allocation of std::map, querying, and string comparison, therefore threads are busy. This benchmark accepts an arg to specify amount of work you'd like the script to do (how big the map will be, how many times to convert an int to a string, and how many times to run the map lookup)
 
-#### Some notes on Google Benchmark results:
-- Number of Iterations is automatically set, based on how many iterations it takes to obtain sufficient data for the bench.
-- Results provide both wall time and CPU time. You may notice, the more threads used for the expensive code (up until the number of available cores on the machine), the longer CPU time will be and the shorter wall time will be. This is because the more code is shared between threads, the faster it can run in total time; the more threads doing work, the more processes running, therefore longer CPU time.
+PicoMath is pretty fast as it evaluates the expression without allocating memory.
+Compared to a basic strtolower of the string `(2 + 2) * 4 / 10 - 20.02`, the evaluation of the same string takes 30% more time.
 
-#### Compiler Optimization
-To obtain a true benchmark, it may be necessary to prevent the compiler from optimizing away a value or expression. The skeleton uses Google Benchmark's internal functions to manage this. See https://github.com/google/benchmark#preventing-optimisation for more details.
-
-## Publishing
-
-We recommend publishing header files to [Mason](https://github.com/mapbox/mason), the C++ packaging manager. Binaries can be downloaded by project name and version number. In order to publish to Mason you must request the publish via a Pull Request to the [`scripts/` directory](https://github.com/mapbox/mason/tree/master/scripts) with your project materials.
-
-Mason packages can be downloaded to your project by using the `mason install` command. This is best set up in a Makefile ([example](https://github.com/mapbox/geometry.hpp/blob/23b7fe66b11a4b7830c797817efe19660806d851/Makefile#L10)).
-
-Of course, you can always copy and paste this repo into your vendor path for your project. :scissors:
-
-## Versioning
-
-This library is semantically versioned using the /include/hello_world/version.cpp file. This defines a number of macros that can be used to check the current major, minor, or patch versions, as well as the full version string.
-
-Here's how a downstream client would check for a particular version to use specific API methods
-```cpp
-#if HELLOWORLD_VERSION_MAJOR > 2
-// use version 2 api
-#else
-// use older verion apis
-#endif
+```
+Run on (12 X 2900 MHz CPU s)
+CPU Caches:
+  L1 Data 32K (x6)  
+  L1 Instruction 32K (x6)
+  L2 Unified 262K (x6)
+  L3 Unified 12582K (x1)
+----------------------------------------------------------
+Benchmark                   Time           CPU Iterations
+----------------------------------------------------------
+Baseline tolower           46 ns         46 ns   11899500
+Simple expression          60 ns         60 ns   10933912
 ```
 
-Here's how to check the version string
-```cpp
-std::cout << "version: " << HELLOWORLD_VERSION_STRING << "/n";
-// => version: 0.2.0
-```
+PicoMath was designed to evaluate a expression in one pass, so to reevaluate the same expression requires parsing again the expression.
 
-And lastly, mathematically checking for a specific version:
-```cpp
-#if HELLOWORLD_VERSION_CODE > 20001
-// use feature provided in v2.0.1
-#endif
-```
+Some other libraries use bytecode or ASTs to improve the runtime cost of multiple evaluations of the same expression, but that increases complexity, size and number of allocations.
+
+
+
 
 # Contributing and License
 
@@ -156,11 +133,12 @@ Contributors are welcome! :sparkles: This repo exists as a place to gather C++ H
 
 hpp-skel is licensed under [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/). Attribution is not required, but definitely welcome! If your project uses this skeleton, please add the hpp-skel badge to your readme so that others can learn about the resource.
 
-[![badge](https://mapbox.s3.amazonaws.com/cpp-assets/hpp-skel-badge_blue.svg)](https://github.com/mapbox/hpp-skel)
-
-To include the badge, paste this into your README.md file:
-```
-[![badge](https://mapbox.s3.amazonaws.com/cpp-assets/hpp-skel-badge_blue.svg)](https://github.com/mapbox/hpp-skel)
-```
-
 See [CONTRIBUTING](CONTRIBUTING.md) and [LICENSE](LICENSE.md) for more info.
+
+##  Attribution
+
+This repository was created using the HPP-SKEL repository: https://github.com/mapbox/hpp-skel
+
+[![badge](https://mapbox.s3.amazonaws.com/cpp-assets/hpp-skel-badge_blue.svg)](https://github.com/mapbox/hpp-skel)
+
+

@@ -1,6 +1,7 @@
 #ifndef PICOMATH_HPP
 #define PICOMATH_HPP
 
+#include <array>
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -12,8 +13,11 @@
 namespace picomath {
 
 #ifndef PM_MAX_ARGUMENTS
-#define PM_MAX_ARGUMENTS 4
+#define PM_MAX_ARGUMENTS 8
 #endif
+
+#define PM_LIKELY(x)   __builtin_expect((x), 1)
+#define PM_UNLIKELY(x) __builtin_expect((x), 0)
 
 class Result;
 
@@ -74,12 +78,12 @@ class Result {
     };
 
 class PicoMath {
-    
+
     const char *                                          originalStr{};
     const char *                                          str{};
-    std::map<std::string, number_t, std::less<>>          variables;
-    std::map<std::string, number_t, std::less<>>          units;
-    std::map<std::string, custom_function_t, std::less<>> functions;
+    std::map<std::string, number_t, std::less<>>          variables{};
+    std::map<std::string, number_t, std::less<>>          units{};
+    std::map<std::string, custom_function_t, std::less<>> functions{};
 
   public:
     auto addVariable(const std::string &name) -> number_t & {
@@ -101,7 +105,7 @@ class PicoMath {
 
     auto parseNext(Result *outResult) -> bool {
         consumeSpace();
-        if (peek() == 0) {
+        if (isEOF()) {
             return false;
         }
         if (peek() == ',') {
@@ -116,11 +120,10 @@ class PicoMath {
         originalStr = str = expression;
         Result ret        = parseExpression();
         consumeSpace();
-        if (peek() == 0) {
+        if (PM_LIKELY(isEOF())) {
             return ret;
         }
-        std::string err = "Invalid characters after expression:";
-        return {err + str};
+        return generateError("Invalid characters after expression");
     }
 
     PicoMath() {
@@ -148,8 +151,8 @@ class PicoMath {
         addFunction("atan2") = PM_FUNCTION_2(std::atan2);
         addFunction("pow")   = PM_FUNCTION_2(std::pow);
         addFunction("min")   = [](size_t argc, const argument_list_t &args) -> Result {
-            number_t result = std::numeric_limits<number_t>::max();
-            size_t   i      = 0;
+            number_t result{std::numeric_limits<number_t>::max()};
+            size_t   i = 0;
             while (i < argc) {
                 result = std::min(args[i], result);
                 i++;
@@ -157,8 +160,8 @@ class PicoMath {
             return result;
         };
         addFunction("max") = [](size_t argc, const argument_list_t &args) -> Result {
-            number_t result = std::numeric_limits<number_t>::min();
-            size_t   i      = 0;
+            number_t result{std::numeric_limits<number_t>::min()};
+            size_t   i = 0;
             while (i < argc) {
                 result = std::max(args[i], result);
                 i++;
@@ -173,11 +176,7 @@ class PicoMath {
         out += error;
         if (identifier.empty()) {
             out += " found: ";
-            if (peek() == 0) {
-                out += "End of string";
-            } else {
-                out += str;
-            }
+            out += isEOF() ? "End of string" : str;
         } else {
             out += ' ';
             out += '`';
@@ -189,9 +188,8 @@ class PicoMath {
 
     auto parseExpression() -> Result {
         consumeSpace();
-        if (peek() == 0) {
-            std::string err = "Unexpected end of the string";
-            return {err + str};
+        if (PM_UNLIKELY(isEOF())) {
+            return generateError("Unexpected end of the string");
         }
         return parseAddition();
     }
@@ -222,9 +220,13 @@ class PicoMath {
         return isAlpha() || *str == '%';
     }
 
+    [[nodiscard]] inline auto isEOF() const -> bool {
+        return *str == 0;
+    }
+
     auto parseFunction(const std::string_view &identifier) -> Result {
         auto f = functions.find(identifier);
-        if (f == functions.end()) {
+        if (PM_UNLIKELY(f == functions.end())) {
             return generateError("Unknown function", identifier);
         }
 
@@ -237,11 +239,11 @@ class PicoMath {
 
         if (peek() != ')') {
             while (true) {
-                if (argc == PM_MAX_ARGUMENTS) {
+                if (PM_UNLIKELY(argc == PM_MAX_ARGUMENTS)) {
                     return generateError("Too many arguments");
                 }
                 Result argument = parseExpression();
-                if (argument.isError()) {
+                if (PM_UNLIKELY(argument.isError())) {
                     return argument;
                 }
                 arguments.at(argc) = argument.result;
@@ -254,12 +256,12 @@ class PicoMath {
             }
         }
 
-        if (peek() != ')') {
+        if (PM_UNLIKELY(peek() != ')')) {
             return generateError("Expected ')'");
         }
         consume();
         Result ret = f->second(argc, arguments);
-        if (ret.isError()) {
+        if (PM_UNLIKELY(ret.isError())) {
             // Improve information in errors generated inside functions
             return generateError(ret.getError(), identifier);
         }
@@ -276,30 +278,30 @@ class PicoMath {
             consume();
             consumeSpace();
             Result exp = parseExpression();
-            if (exp.isError()) {
+            if (PM_UNLIKELY(exp.isError())) {
                 return exp;
             }
             // consume )
             consumeSpace();
-            if (peek() != ')') {
+            if (PM_UNLIKELY(peek() != ')')) {
                 return generateError("Expected ')'");
             }
             consume();
             return exp;
-        } 
+        }
         if (peek() == '-' || peek() == '+') {
             // Prefix unary operator
             char op = consume();
             consumeSpace();
             Result unary = parseSubExpression();
-            if (unary.isError()) {
+            if (PM_UNLIKELY(unary.isError())) {
                 return unary;
             }
             if (op == '-') {
                 unary.result = -unary.result;
             }
             return unary;
-        } 
+        }
         if (isAlpha()) {
             // Variable
             const char *start = str;
@@ -316,12 +318,12 @@ class PicoMath {
                 return parseFunction(identifier);
             }
             auto f = variables.find(identifier);
-            if (f == variables.end()) {
+            if (PM_UNLIKELY(f == variables.end())) {
                 return generateError("Unknown variable", identifier);
-            } 
+            }
             return {f->second};
-        }             return generateError("Invalid character");
-       
+        }
+        return generateError("Invalid character");
     }
 
     inline auto parseNumber() -> Result {
@@ -358,7 +360,7 @@ class PicoMath {
             std::string_view identifier{start, size};
 
             auto f = units.find(identifier);
-            if (f == units.end()) {
+            if (PM_UNLIKELY(f == units.end())) {
                 return generateError("Unknown unit", identifier);
             }
             ret = ret * f->second;
@@ -369,7 +371,7 @@ class PicoMath {
     auto parseAddition() -> Result {
         consumeSpace();
         Result left = parseMultiplication();
-        if (left.isError()) {
+        if (PM_UNLIKELY(left.isError())) {
             return left;
         }
         consumeSpace();
@@ -377,7 +379,7 @@ class PicoMath {
             char op = consume();
             consumeSpace();
             Result right = parseMultiplication();
-            if (right.isError()) {
+            if (PM_UNLIKELY(right.isError())) {
                 return right;
             }
             if (op == '+') {
@@ -393,7 +395,7 @@ class PicoMath {
     auto parseMultiplication() -> Result {
         consumeSpace();
         Result left = parseSubExpression();
-        if (left.isError()) {
+        if (PM_UNLIKELY(left.isError())) {
             return left;
         }
         consumeSpace();
@@ -401,7 +403,7 @@ class PicoMath {
             char op = consume();
             consumeSpace();
             Result right = parseSubExpression();
-            if (right.isError()) {
+            if (PM_UNLIKELY(right.isError())) {
                 return right;
             }
             if (op == '*') {

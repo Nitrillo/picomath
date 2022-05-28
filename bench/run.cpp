@@ -56,17 +56,33 @@ static void BM_complexExpression(benchmark::State &state) // NOLINT google-runti
     }
 }
 
+static void BM_multiExpression(benchmark::State &state) // NOLINT google-runtime-references
+{
+    picomath::PicoMath ctx;
+    while (state.KeepRunning()) {
+        auto result = ctx.parseMultiExpression("2 * 4, 2, (100 * 10), pow(2,8)");
+        do {
+            if (result.isOk()) {
+                benchmark::DoNotOptimize(result.getResult());
+            }
+        } while (ctx.parseNext(&result));
+        benchmark::ClobberMemory();
+    }
+}
+
 auto main(int argc, char *argv[]) -> int {
     benchmark::RegisterBenchmark("Baseline tolower", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-                                 BM_baseLine); 
+                                 BM_baseLine);
     benchmark::RegisterBenchmark("Simple expression", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-                                 BM_simpleExpression); 
+                                 BM_simpleExpression);
     benchmark::RegisterBenchmark("Built-in functions", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-                                 BM_functions); 
+                                 BM_functions);
     benchmark::RegisterBenchmark("Custom units", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-                                 BM_customUnit); 
+                                 BM_customUnit);
     benchmark::RegisterBenchmark("Complex expression", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-                                 BM_complexExpression); 
+                                 BM_complexExpression);
+    benchmark::RegisterBenchmark("Multiexpression", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
+                                 BM_multiExpression);
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();

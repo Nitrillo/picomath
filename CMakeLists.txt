@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(hpp_skel LANGUAGES CXX)
+project(picomath LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -51,3 +51,8 @@ add_executable(bench-tests ${BENCH_SOURCES})
 
 # link benchmark static library to the bench-tests binary so the bench tests know where to find the benchmark impl code
 target_link_libraries(bench-tests ${MASON_PACKAGE_benchmark_STATIC_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(example_simple examples/simple.cpp)
+add_executable(example_multi examples/multi.cpp)
+add_executable(example_function examples/function.cpp)
+add_executable(example_unit examples/unit.cpp)
