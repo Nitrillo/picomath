@@ -2,7 +2,7 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 
-using namespace picomath;
+using namespace picomath; // NOLINT
 
 auto AreSame(number_t a, number_t b) -> bool {
     return fabs(a - b) < FLT_EPSILON;
@@ -51,7 +51,6 @@ TEST_CASE("Custom functions") {
 
 TEST_CASE("Custom units") {
     PicoMath ctx;
-
     ctx.addUnit("%") = 500.0 / 100.0;
     REQUIRE(AreSame(ctx.parseExpression("100%").getResult(), 500.0));
     REQUIRE(AreSame(ctx.parseExpression("50%").getResult(), 250.0));
@@ -88,13 +87,13 @@ TEST_CASE("Multi-expressions") {
     PicoMath ctx;
     REQUIRE(AreSame(ctx.parseMultiExpression("-2, 2 * 3, (10 - 5) * 5, sin(0), pi").getResult(), -2));
     Result out{0};
-    REQUIRE(ctx.parseNext(out));
+    REQUIRE(ctx.parseNext(&out));
     REQUIRE(AreSame(out.getResult(), 6));
-    REQUIRE(ctx.parseNext(out));
+    REQUIRE(ctx.parseNext(&out));
     REQUIRE(AreSame(out.getResult(), 25));
-    REQUIRE(ctx.parseNext(out));
+    REQUIRE(ctx.parseNext(&out));
     REQUIRE(AreSame(out.getResult(), 0));
-    REQUIRE(ctx.parseNext(out));
+    REQUIRE(ctx.parseNext(&out));
     REQUIRE(AreSame(out.getResult(), M_PI));
 }
 

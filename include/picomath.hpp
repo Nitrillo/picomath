@@ -23,21 +23,21 @@ using number_t = float;
 using number_t = double;
 #endif
 using argument_list_t   = std::array<number_t, PM_MAX_ARGUMENTS>;
-using Error             = std::string;
+using error_t           = std::string;
 using custom_function_t = std::function<Result(size_t argc, const argument_list_t &list)>;
 
 class Result {
     friend class PicoMath;
 
-    number_t               result;
-    std::unique_ptr<Error> error;
+    number_t                 result;
+    std::unique_ptr<error_t> error;
 
   public:
     Result(number_t result) : result(result) { // NOLINT
     }
 
     Result(std::string &&description) : result(0) { // NOLINT
-        error = std::make_unique<Error>(std::move(description));
+        error = std::make_unique<error_t>(std::move(description));
     }
 
     [[nodiscard]] auto isError() const -> bool {
@@ -74,7 +74,7 @@ class Result {
     };
 
 class PicoMath {
-
+    
     const char *                                          originalStr{};
     const char *                                          str{};
     std::map<std::string, number_t, std::less<>>          variables;
@@ -99,7 +99,7 @@ class PicoMath {
         return parseExpression();
     }
 
-    auto parseNext(Result &result) -> bool {
+    auto parseNext(Result *outResult) -> bool {
         consumeSpace();
         if (peek() == 0) {
             return false;
@@ -108,7 +108,7 @@ class PicoMath {
             consume();
             consumeSpace();
         }
-        result = parseExpression();
+        *outResult = parseExpression();
         return true;
     }
 
@@ -244,7 +244,7 @@ class PicoMath {
                 if (argument.isError()) {
                     return argument;
                 }
-                arguments[argc] = argument.result;
+                arguments.at(argc) = argument.result;
                 argc++;
                 consumeSpace();
                 if (peek() != ',') {
@@ -270,7 +270,8 @@ class PicoMath {
         if (isDigit() || peek() == '.') {
             // Number
             return parseNumber();
-        } else if (peek() == '(') {
+        }
+        if (peek() == '(') {
             // Parenthesized expression
             consume();
             consumeSpace();
@@ -285,7 +286,8 @@ class PicoMath {
             }
             consume();
             return exp;
-        } else if (peek() == '-' || peek() == '+') {
+        } 
+        if (peek() == '-' || peek() == '+') {
             // Prefix unary operator
             char op = consume();
             consumeSpace();
@@ -297,7 +299,8 @@ class PicoMath {
                 unary.result = -unary.result;
             }
             return unary;
-        } else if (isAlpha()) {
+        } 
+        if (isAlpha()) {
             // Variable
             const char *start = str;
             size_t      size  = 0;
@@ -315,12 +318,10 @@ class PicoMath {
             auto f = variables.find(identifier);
             if (f == variables.end()) {
                 return generateError("Unknown variable", identifier);
-            } else {
-                return {f->second};
-            }
-        } else {
-            return generateError("Invalid character");
-        }
+            } 
+            return {f->second};
+        }             return generateError("Invalid character");
+       
     }
 
     inline auto parseNumber() -> Result {

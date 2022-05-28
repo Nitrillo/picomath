@@ -57,16 +57,16 @@ static void BM_complexExpression(benchmark::State &state) // NOLINT google-runti
 }
 
 auto main(int argc, char *argv[]) -> int {
-    benchmark::RegisterBenchmark("Baseline tolower",
-                                 BM_baseLine); // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-    benchmark::RegisterBenchmark("Simple expression",
-                                 BM_simpleExpression); // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-    benchmark::RegisterBenchmark("Built-in functions",
-                                 BM_functions); // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-    benchmark::RegisterBenchmark("Custom units",
-                                 BM_customUnit); // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
-    benchmark::RegisterBenchmark("Complex expression",
-                                 BM_complexExpression); // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
+    benchmark::RegisterBenchmark("Baseline tolower", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
+                                 BM_baseLine); 
+    benchmark::RegisterBenchmark("Simple expression", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
+                                 BM_simpleExpression); 
+    benchmark::RegisterBenchmark("Built-in functions", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
+                                 BM_functions); 
+    benchmark::RegisterBenchmark("Custom units", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
+                                 BM_customUnit); 
+    benchmark::RegisterBenchmark("Complex expression", // NOLINT clang-analyzer-cplusplus.NewDeleteLeaks
+                                 BM_complexExpression); 
 
     benchmark::Initialize(&argc, argv);
     benchmark::RunSpecifiedBenchmarks();
