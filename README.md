@@ -19,6 +19,10 @@ Initially created to evaluate CSS-like expressions for the Shinobit Engine, a pr
 * User defined functions with multiple arguments (e.g. `avg(10, 20, 30)`)
 * Uses standard C++ containers
 
+## How to integrate in your project
+
+Just copy the file `/include/picomath.hpp` in your project
+
 ## Usage
 
 Simple evaluation:
