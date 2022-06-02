@@ -1,6 +1,6 @@
 BSD 3-Clause License
 
-Copyright (c) 2022, the respective contributors, as shown by the AUTHORS file.
+Copyright (c) 2022, Cesar Guirao Robles (a.k.a Nitro) <cesar@no2.es>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

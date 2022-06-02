@@ -1,9 +1,18 @@
+/**
+ * @file picomath.hpp
+ * @author Cesar Guirao Robles (a.k.a. Nitro) <cesar@no2.es>
+ * @brief Math expression evaluation. BSD 3-Clause License
+ * @version 1.0
+ * @date 2022-06-01
+ *
+ * @copyright Copyright (c) 2022, Cesar Guirao Robles (a.k.a. Nitro) <cesar@no2.es>
+ *
+ */
 #ifndef PICOMATH_HPP
 #define PICOMATH_HPP
 
 #include <array>
 #include <cmath>
-#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
@@ -18,30 +27,34 @@ namespace picomath {
 
 #define PM_LIKELY(x)   __builtin_expect((x), 1)
 #define PM_UNLIKELY(x) __builtin_expect((x), 0)
+#define PM_INLINE      inline __attribute__((always_inline))
 
 class Result;
+class Expression;
+class PicoMath;
 
 #ifdef PM_USE_FLOAT
 using number_t = float;
 #else
 using number_t = double;
 #endif
-using argument_list_t   = std::array<number_t, PM_MAX_ARGUMENTS>;
-using error_t           = std::string;
-using custom_function_t = std::function<Result(size_t argc, const argument_list_t &list)>;
+using argument_list_t        = std::array<number_t, PM_MAX_ARGUMENTS>;
+using error_t                = std::string;
+using custom_function_many_t = Result (*)(size_t argc, const argument_list_t &list);
+using custom_function_1_t    = number_t (*)(number_t);
 
 class Result {
-    friend class PicoMath;
+    friend class Expression;
 
     number_t                 result;
     std::unique_ptr<error_t> error;
 
   public:
-    Result(number_t result) : result(result) { // NOLINT
+    Result(number_t value = 0) noexcept : result(value), error() { // NOLINT
     }
 
-    Result(std::string &&description) : result(0) { // NOLINT
-        error = std::make_unique<error_t>(std::move(description));
+    Result(std::string &&description) noexcept
+        : result(0), error(std::make_unique<error_t>(std::move(description))) { // NOLINT
     }
 
     [[nodiscard]] auto isError() const -> bool {
@@ -61,69 +74,79 @@ class Result {
     }
 };
 
-#define PM_FUNCTION_1(fun)                                                                                             \
-    [](size_t argc, const argument_list_t &args) -> Result {                                                           \
-        if (argc != 1) {                                                                                               \
-            return {"One argument needed"};                                                                            \
-        }                                                                                                              \
-        return fun(args[0]);                                                                                           \
-    };
-
 #define PM_FUNCTION_2(fun)                                                                                             \
     [](size_t argc, const argument_list_t &args) -> Result {                                                           \
         if (argc != 2) {                                                                                               \
             return {"Two arguments needed"};                                                                           \
         }                                                                                                              \
         return fun(args[0], args[1]);                                                                                  \
-    };
+    }
 
 class PicoMath {
+    friend Expression;
 
-    const char *                                          originalStr{};
-    const char *                                          str{};
-    std::map<std::string, number_t, std::less<>>          variables{};
-    std::map<std::string, number_t, std::less<>>          units{};
-    std::map<std::string, custom_function_t, std::less<>> functions{};
+    struct Function {
+        enum Type
+        {
+            FunctionMany = 0,
+            Function1    = 1
+        } type;
+        custom_function_many_t many;
+        custom_function_1_t    f1;
+    };
+
+    std::map<std::string, number_t, std::less<>> variables{};
+    std::map<std::string, number_t, std::less<>> units{};
+    std::map<std::string, Function, std::less<>> functions{};
 
   public:
+    /**
+     * @brief Adds a variable to the parsing context.
+     * PicoMath returns a reference to entry inside the map of variables, that can be changed
+     * during multiple evaluations
+     *
+     * @param name Name of the variable
+     * @return number_t& Reference to variable's value
+     */
     auto addVariable(const std::string &name) -> number_t & {
         return variables[name];
     }
 
+    /**
+     * @brief Adds a scale unit to the parsing context
+     * PicoMath returns a reference to entry inside the map of variables, that can be changed
+     * during multiple evaluations.
+     *
+     * @param name Name of the unit
+     * @return number_t& Reference to the unit's scale value
+     */
     auto addUnit(const std::string &name) -> number_t & {
         return units[name];
     }
 
-    auto addFunction(const std::string &name) -> custom_function_t & {
-        return functions[name];
+    /**
+     * @brief Adds a custom function to the parsing context
+     * This overload allows the user to pass a function that can handle multiple arguments.
+     *
+     * @param name Name of the function
+     * @param func Function pointer
+     */
+    auto addFunction(const std::string &name, custom_function_many_t func) -> void {
+        auto &function = functions[name];
+        function.type  = Function::Type::FunctionMany;
+        function.many  = func;
     }
 
-    auto parseMultiExpression(const char *expression) -> Result {
-        originalStr = str = expression;
-        return parseExpression();
-    }
-
-    auto parseNext(Result *outResult) -> bool {
-        consumeSpace();
-        if (isEOF()) {
-            return false;
-        }
-        if (peek() == ',') {
-            consume();
-            consumeSpace();
-        }
-        *outResult = parseExpression();
-        return true;
-    }
-
-    auto parseExpression(const char *expression) -> Result {
-        originalStr = str = expression;
-        Result ret        = parseExpression();
-        consumeSpace();
-        if (PM_LIKELY(isEOF())) {
-            return ret;
-        }
-        return generateError("Invalid characters after expression");
+    /**
+     * @brief Adds a custom function to the parsing context
+     *
+     * @param name Name of the function
+     * @param func Function pointer
+     */
+    auto addFunction(const std::string &name, custom_function_1_t func) -> void {
+        auto &function = functions[name];
+        function.type  = Function::Type::Function1;
+        function.f1    = func;
     }
 
     PicoMath() {
@@ -132,24 +155,24 @@ class PicoMath {
         addVariable("e")  = static_cast<number_t>(M_E);
 
         // Built-in functions
-        addFunction("abs")   = PM_FUNCTION_1(std::abs);
-        addFunction("ceil")  = PM_FUNCTION_1(std::ceil);
-        addFunction("floor") = PM_FUNCTION_1(std::floor);
-        addFunction("round") = PM_FUNCTION_1(std::round);
-        addFunction("ln")    = PM_FUNCTION_1(std::log);
-        addFunction("log")   = PM_FUNCTION_1(std::log10);
-        addFunction("cos")   = PM_FUNCTION_1(std::cos);
-        addFunction("sin")   = PM_FUNCTION_1(std::sin);
-        addFunction("acos")  = PM_FUNCTION_1(std::acos);
-        addFunction("asin")  = PM_FUNCTION_1(std::asin);
-        addFunction("cosh")  = PM_FUNCTION_1(std::cosh);
-        addFunction("sinh")  = PM_FUNCTION_1(std::sinh);
-        addFunction("tan")   = PM_FUNCTION_1(std::tan);
-        addFunction("tanh")  = PM_FUNCTION_1(std::tanh);
-        addFunction("sqrt")  = PM_FUNCTION_1(std::sqrt);
-        addFunction("atan2") = PM_FUNCTION_2(std::atan2);
-        addFunction("pow")   = PM_FUNCTION_2(std::pow);
-        addFunction("min")   = [](size_t argc, const argument_list_t &args) -> Result {
+        addFunction("abs", std::abs);
+        addFunction("ceil", std::ceil);
+        addFunction("floor", std::floor);
+        addFunction("round", std::round);
+        addFunction("ln", std::log);
+        addFunction("log", std::log10);
+        addFunction("cos", std::cos);
+        addFunction("sin", std::sin);
+        addFunction("acos", std::acos);
+        addFunction("asin", std::asin);
+        addFunction("cosh", std::cosh);
+        addFunction("sinh", std::sinh);
+        addFunction("tan", std::tan);
+        addFunction("tanh", std::tanh);
+        addFunction("sqrt", std::sqrt);
+        addFunction("atan2", PM_FUNCTION_2(std::atan2));
+        addFunction("pow", PM_FUNCTION_2(std::pow));
+        addFunction("min", [](size_t argc, const argument_list_t &args) -> Result {
             number_t result{std::numeric_limits<number_t>::max()};
             size_t   i = 0;
             while (i < argc) {
@@ -157,8 +180,8 @@ class PicoMath {
                 i++;
             }
             return result;
-        };
-        addFunction("max") = [](size_t argc, const argument_list_t &args) -> Result {
+        });
+        addFunction("max", [](size_t argc, const argument_list_t &args) -> Result {
             number_t result{std::numeric_limits<number_t>::min()};
             size_t   i = 0;
             while (i < argc) {
@@ -166,7 +189,66 @@ class PicoMath {
                 i++;
             }
             return result;
-        };
+        });
+    }
+
+    /**
+     * @brief Evaluates the expression and returns a value or an error if the expression is invalid
+     *
+     * @param expression Expression to evaluate
+     * @return Result Result containing the result value or an error
+     */
+    auto evalExpression(const char *expression) -> Result;
+
+    /**
+     * @brief Creates a Expression that can be used to evaluate multiple expression separated by commas.
+     *
+     * @param expression MultiExpression to evaluate
+     * @return Expression Expression object maintaining the context of the multi-evaluation
+     */
+    auto evalMultiExpression(const char *expression) -> Expression;
+};
+
+class Expression {
+    friend PicoMath;
+
+    const PicoMath &context;
+    const char *    originalStr{};
+    const char *    str{};
+
+    Expression(const PicoMath &picomathContext, const char *expression)
+        : context(picomathContext), originalStr(expression), str(expression) {
+    }
+
+    auto evalSingle() -> Result {
+        Result ret = evalExpression();
+        consumeSpace();
+        if (PM_LIKELY(isEOF())) {
+            return ret;
+        }
+        return generateError("Invalid characters after expression");
+    }
+
+  public:
+    /**
+     * @brief Evaluates the next expression in the multi expression context
+     *
+     * @param outResult Result of the evaluation
+     * @return true The evaluation succeeded and the outResult parameter contains a valid output value.
+     * @return false There are no more expressions to evaluate
+     */
+    auto evalNext(Result *outResult) -> bool {
+        consumeSpace();
+        if (isEOF()) {
+            return false;
+        }
+        *outResult = evalExpression();
+        consumeSpace();
+        if (peek() == ',') {
+            consume();
+            consumeSpace();
+        }
+        return true;
     }
 
   private:
@@ -185,7 +267,7 @@ class PicoMath {
         return out;
     }
 
-    auto parseExpression() -> Result {
+    PM_INLINE auto evalExpression() -> Result {
         consumeSpace();
         if (PM_UNLIKELY(isEOF())) {
             return generateError("Unexpected end of the string");
@@ -193,39 +275,39 @@ class PicoMath {
         return parseAddition();
     }
 
-    inline auto consume() -> char {
+    PM_INLINE auto consume() -> char {
         return *str++;
     }
 
-    [[nodiscard]] inline auto peek() const -> char {
+    [[nodiscard]] PM_INLINE auto peek() const -> char {
         return *str;
     }
 
-    inline void consumeSpace() {
+    PM_INLINE void consumeSpace() {
         while (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n') {
             consume();
         }
     }
 
-    [[nodiscard]] inline auto isDigit() const -> bool {
+    [[nodiscard]] PM_INLINE auto isDigit() const -> bool {
         return *str >= '0' && *str <= '9';
     }
 
-    [[nodiscard]] inline auto isAlpha() const -> bool {
+    [[nodiscard]] PM_INLINE auto isAlpha() const -> bool {
         return (*str >= 'a' && *str <= 'z') || (*str >= 'A' && *str <= 'Z') || (*str == '_');
     }
 
-    [[nodiscard]] inline auto isUnitChar() const -> bool {
+    [[nodiscard]] PM_INLINE auto isUnitChar() const -> bool {
         return isAlpha() || *str == '%';
     }
 
-    [[nodiscard]] inline auto isEOF() const -> bool {
+    [[nodiscard]] PM_INLINE auto isEOF() const -> bool {
         return *str == 0;
     }
 
-    auto parseFunction(const std::string_view &identifier) -> Result {
-        auto f = functions.find(identifier);
-        if (PM_UNLIKELY(f == functions.end())) {
+    PM_INLINE auto parseFunction(std::string_view identifier) noexcept -> Result {
+        auto f = context.functions.find(identifier);
+        if (PM_UNLIKELY(f == context.functions.end())) {
             return generateError("Unknown function", identifier);
         }
 
@@ -241,11 +323,11 @@ class PicoMath {
                 if (PM_UNLIKELY(argc == PM_MAX_ARGUMENTS)) {
                     return generateError("Too many arguments");
                 }
-                Result argument = parseExpression();
+                Result argument = evalExpression();
                 if (PM_UNLIKELY(argument.isError())) {
                     return argument;
                 }
-                arguments.at(argc) = argument.result;
+                arguments[argc] = argument.result;
                 argc++;
                 consumeSpace();
                 if (peek() != ',') {
@@ -259,7 +341,14 @@ class PicoMath {
             return generateError("Expected ')'");
         }
         consume();
-        Result ret = f->second(argc, arguments);
+
+        if (f->second.type == PicoMath::Function::Type::Function1) {
+            if (PM_UNLIKELY(argc != 1)) {
+                return generateError("One argument required");
+            }
+            return {f->second.f1(arguments[0])};
+        }
+        Result ret = f->second.many(argc, arguments);
         if (PM_UNLIKELY(ret.isError())) {
             // Improve information in errors generated inside functions
             return generateError(ret.getError(), identifier);
@@ -267,65 +356,57 @@ class PicoMath {
         return ret;
     }
 
-    auto parseSubExpression() -> Result {
-        if (isDigit() || peek() == '.') {
-            // Number
-            return parseNumber();
-        }
-        if (peek() == '(') {
-            // Parenthesized expression
-            consume();
-            consumeSpace();
-            Result exp = parseExpression();
-            if (PM_UNLIKELY(exp.isError())) {
-                return exp;
-            }
-            // consume )
-            consumeSpace();
-            if (PM_UNLIKELY(peek() != ')')) {
-                return generateError("Expected ')'");
-            }
-            consume();
+    PM_INLINE auto parseParenthesized() -> Result {
+        consume();
+        consumeSpace();
+        Result exp = evalExpression();
+        if (PM_UNLIKELY(exp.isError())) {
             return exp;
         }
-        if (peek() == '-' || peek() == '+') {
-            // Prefix unary operator
-            char op = consume();
-            consumeSpace();
-            Result unary = parseSubExpression();
-            if (PM_UNLIKELY(unary.isError())) {
-                return unary;
-            }
-            if (op == '-') {
-                unary.result = -unary.result;
-            }
-            return unary;
+        consumeSpace();
+        // consume ')'
+        if (PM_UNLIKELY(peek() != ')')) {
+            return generateError("Expected ')'");
         }
-        if (isAlpha()) {
-            // Variable
-            const char *start = str;
-            size_t      size  = 0;
-            do {
-                consume();
-                size++;
-            } while (isAlpha());
-
-            std::string_view identifier{start, size};
-            consumeSpace();
-            if (peek() == '(') {
-                // function call
-                return parseFunction(identifier);
-            }
-            auto f = variables.find(identifier);
-            if (PM_UNLIKELY(f == variables.end())) {
-                return generateError("Unknown variable", identifier);
-            }
-            return {f->second};
-        }
-        return generateError("Invalid character");
+        consume();
+        return exp;
     }
 
-    inline auto parseNumber() -> Result {
+    auto parsePrefixUnaryOperator() -> Result {
+        char op = consume();
+        consumeSpace();
+        Result unary = parseSubExpression();
+        if (PM_UNLIKELY(unary.isError())) {
+            return unary;
+        }
+        if (op == '-') {
+            unary.result = -unary.result;
+        }
+        return unary;
+    }
+
+    PM_INLINE auto parseVariableOrFunction() noexcept -> Result {
+        const char *start = str;
+        size_t      size  = 0;
+        do {
+            consume();
+            size++;
+        } while (isAlpha());
+
+        std::string_view identifier{start, size};
+        consumeSpace();
+        if (peek() == '(') {
+            // function call
+            return parseFunction(identifier);
+        }
+        auto f = context.variables.find(identifier);
+        if (PM_UNLIKELY(f == context.variables.end())) {
+            return generateError("Unknown variable", identifier);
+        }
+        return {f->second};
+    }
+
+    PM_INLINE auto parseNumber() noexcept -> Result {
         number_t ret = 0;
 
         while (isDigit()) {
@@ -358,13 +439,33 @@ class PicoMath {
 
             std::string_view identifier{start, size};
 
-            auto f = units.find(identifier);
-            if (PM_UNLIKELY(f == units.end())) {
+            auto f = context.units.find(identifier);
+            if (PM_UNLIKELY(f == context.units.end())) {
                 return generateError("Unknown unit", identifier);
             }
             ret = ret * f->second;
         }
         return ret;
+    }
+
+    PM_INLINE auto parseSubExpression() -> Result {
+        if (isDigit() || peek() == '.') {
+            // Number
+            return parseNumber();
+        }
+        if (peek() == '(') {
+            // Parenthesized expression
+            return parseParenthesized();
+        }
+        if (peek() == '-' || peek() == '+') {
+            // Prefix unary operator
+            return parsePrefixUnaryOperator();
+        }
+        if (isAlpha()) {
+            // Variable or function
+            return parseVariableOrFunction();
+        }
+        return generateError("Invalid character");
     }
 
     auto parseAddition() -> Result {
@@ -415,6 +516,15 @@ class PicoMath {
         return left;
     }
 };
+
+inline auto PicoMath::evalExpression(const char *expression) -> Result {
+    Expression exp(*this, expression);
+    return exp.evalSingle();
+}
+
+inline auto PicoMath::evalMultiExpression(const char *expression) -> Expression {
+    return {*this, expression};
+}
 
 } // namespace picomath
 #endif
