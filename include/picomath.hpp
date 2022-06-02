@@ -1,12 +1,12 @@
 /**
  * @file picomath.hpp
  * @author Cesar Guirao Robles (a.k.a. Nitro) <cesar@no2.es>
- * @brief Math expression evaluation. BSD 3-Clause License 
+ * @brief Math expression evaluation. BSD 3-Clause License
  * @version 1.0
  * @date 2022-06-01
- * 
+ *
  * @copyright Copyright (c) 2022, Cesar Guirao Robles (a.k.a. Nitro) <cesar@no2.es>
- * 
+ *
  */
 #ifndef PICOMATH_HPP
 #define PICOMATH_HPP
@@ -50,11 +50,11 @@ class Result {
     std::unique_ptr<error_t> error;
 
   public:
-    Result(number_t value = 0) noexcept : result(value) { // NOLINT
+    Result(number_t value = 0) noexcept : result(value), error() { // NOLINT
     }
 
-    Result(std::string &&description) noexcept : result(0) { // NOLINT
-        error = std::make_unique<error_t>(std::move(description));
+    Result(std::string &&description) noexcept
+        : result(0), error(std::make_unique<error_t>(std::move(description))) { // NOLINT
     }
 
     [[nodiscard]] auto isError() const -> bool {
