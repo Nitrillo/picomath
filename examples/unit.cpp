@@ -11,7 +11,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
     devicePixelRatio       = 2.0;
 
     // Container size 350px
-    pm.addUnit("%") = 350.0 * devicePixelRatio / 100.0;
+    auto & percentage = pm.addUnit("%");
+    percentage = 350.0 * devicePixelRatio / 100.0;
 
     // Calculate inner width with a 5px padding in each side
     auto result = pm.parseExpression("100% -5px * 2");

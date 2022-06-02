@@ -32,16 +32,17 @@ TEST_CASE("Built-in functions") {
     REQUIRE(AreSame(ctx.parseExpression("min(4, 3, 2, 1)").getResult(), 1.0));
     REQUIRE(AreSame(ctx.parseExpression("max(4, 3, 2, 1)").getResult(), 4.0));
     REQUIRE(AreSame(ctx.parseExpression("(sqrt(10000) * 4) / 100.00").getResult(), 4.0));
+    REQUIRE(AreSame(ctx.parseExpression("max(cos(10) - cos(10) + 1, sqrt(10000))").getResult(), 100.0));
 }
 
 TEST_CASE("Custom functions") {
     PicoMath ctx;
-    ctx.addFunction("multiply") = [](size_t argc, const argument_list_t &args) -> Result {
+    ctx.addFunction("multiply", [](size_t argc, const argument_list_t &args) -> Result {
         if (argc != 2) {
             return {"Invalid number of arguments"};
         }
         return {args[0] * args[1]};
-    };
+    });
 
     REQUIRE(AreSame(ctx.parseExpression("multiply(8, 2)").getResult(), 16.0));
     REQUIRE(AreSame(ctx.parseExpression("multiply(2, 8)").getResult(), 16.0));

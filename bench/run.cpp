@@ -27,7 +27,7 @@ static void BM_functions(benchmark::State &state) // NOLINT google-runtime-refer
 {
     picomath::PicoMath ctx;
     while (state.KeepRunning()) {
-        benchmark::DoNotOptimize(ctx.parseExpression("cos(pi) + sin(pi)"));
+        benchmark::DoNotOptimize(ctx.parseExpression("sqrt(cos(pi) + ceil(sin(pi)))"));
         benchmark::ClobberMemory();
     }
 }
