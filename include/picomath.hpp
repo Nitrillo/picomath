@@ -50,7 +50,7 @@ class Result {
     std::unique_ptr<error_t> error;
 
   public:
-    Result(number_t result = 0) noexcept : result(result) { // NOLINT
+    Result(number_t value = 0) noexcept : result(value) { // NOLINT
     }
 
     Result(std::string &&description) noexcept : result(0) { // NOLINT
@@ -216,8 +216,8 @@ class Expression {
     const char *    originalStr{};
     const char *    str{};
 
-    Expression(const PicoMath &context, const char *expression)
-        : context(context), originalStr(expression), str(expression) {
+    Expression(const PicoMath &picomathContext, const char *expression)
+        : context(picomathContext), originalStr(expression), str(expression) {
     }
 
     auto evalSingle() -> Result {
