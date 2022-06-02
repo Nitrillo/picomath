@@ -372,7 +372,7 @@ class Expression {
         return exp;
     }
 
-    PM_INLINE auto parsePrefixUnaryOperator() -> Result {
+    auto parsePrefixUnaryOperator() -> Result {
         char op = consume();
         consumeSpace();
         Result unary = parseSubExpression();
