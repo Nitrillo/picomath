@@ -2,10 +2,11 @@
 
 PicoMath is a header only C++ library to evaluate math expressions.
 
-Initially created to evaluate CSS-like expressions for the Shinobit Engine, a proprietary 2D game engine used in the MMO browser game [GoBattle.io](http://gobattle.io)
+Initially created to evaluate CSS-like expressions for the Shinobit Engine, a proprietary 2D game engine.
 
-[![Build Status](https://travis-ci.com/nitrillo/picomath.svg?branch=master)](https://travis-ci.com/nitrillo/picomath)
-[![codecov](https://codecov.io/gh/nitrillo/picomath/branch/master/graph/badge.svg)](https://codecov.io/gh/nitrillo/picomath)
+This library is used in the MMO browser game [GoBattle.io](http://gobattle.io)
+
+![Build status](https://github.com/Nitrillo/picomath/actions/workflows/ci.yml/badge.svg)
 
 ## Features
 * Header only C++ library: easy integration in your project
@@ -108,7 +109,12 @@ make test
 ## Benchmarks
 
 PicoMath is pretty fast as it evaluates the expression without allocating memory.
-Compared to a basic strtolower of the string `(2 + 2) * 4 / 10 - 20.02`, the evaluation of the same string takes 50% more time.
+Compared to a basic strtolower of the string `(2 + 2) * 4 / 10 - 20.02`, using the method
+```
+std::transform(data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); }));
+```
+the evaluation of the same string takes only around 25% more time.
+Please run the benchmark in your machine to validate the results.
 
 ```
 Run on (12 X 2900 MHz CPU s)
@@ -120,15 +126,14 @@ CPU Caches:
 ----------------------------------------------------------
 Benchmark                   Time           CPU Iterations
 ----------------------------------------------------------
-Baseline tolower           47 ns         47 ns   11337134
-Simple expression          70 ns         70 ns    9441979
+Baseline tolower           43 ns         43 ns   16254876
+Simple expression          54 ns         54 ns   12960515
 ```
 
 PicoMath was designed to evaluate a expression in one pass, so to reevaluate the same expression requires parsing again the expression.
 
 Some other libraries use bytecode or ASTs to improve the runtime cost of multiple evaluations of the same expression, but that increases complexity, size and number of allocations.
-
-
+In my tests comparing PicoMath to TinyExpr, you need to evaluate at least three times the same expression to get some benefit of the extra steps.  
 
 
 # Contributing and License
@@ -137,10 +142,9 @@ Contributors are welcome! :sparkles: please see [CONTRIBUTING](CONTRIBUTING.md) 
 
 PicoMath is licensed under a `BSD 3-Clause` license, see [LICENSE](LICENSE.md) for more info.
 
+Please let me know if you use the library in other projects and I can add the link in the readme.
 ##  Attribution
 
 This repository was created using the HPP-SKEL repository: https://github.com/mapbox/hpp-skel
-
-[![badge](https://mapbox.s3.amazonaws.com/cpp-assets/hpp-skel-badge_blue.svg)](https://github.com/mapbox/hpp-skel)
 
 

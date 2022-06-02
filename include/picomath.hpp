@@ -1,3 +1,13 @@
+/**
+ * @file picomath.hpp
+ * @author Cesar Guirao Robles (a.k.a. Nitro) <cesar@no2.es>
+ * @brief Math expression evaluation. BSD 3-Clause License 
+ * @version 1.0
+ * @date 2022-06-01
+ * 
+ * @copyright Copyright (c) 2022, Cesar Guirao Robles (a.k.a. Nitro) <cesar@no2.es>
+ * 
+ */
 #ifndef PICOMATH_HPP
 #define PICOMATH_HPP
 
