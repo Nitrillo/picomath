@@ -20,6 +20,8 @@ namespace picomath {
 #define PM_INLINE      inline __attribute__((always_inline))
 
 class Result;
+class Expression;
+class PicoMath;
 
 #ifdef PM_USE_FLOAT
 using number_t = float;
@@ -32,16 +34,16 @@ using custom_function_many_t = Result (*)(size_t argc, const argument_list_t &li
 using custom_function_1_t    = number_t (*)(number_t);
 
 class Result {
-    friend class PicoMath;
+    friend class Expression;
 
     number_t                 result;
     std::unique_ptr<error_t> error;
 
   public:
-    Result(number_t result) : result(result) { // NOLINT
+    Result(number_t result = 0) noexcept : result(result) { // NOLINT
     }
 
-    Result(std::string &&description) : result(0) { // NOLINT
+    Result(std::string &&description) noexcept : result(0) { // NOLINT
         error = std::make_unique<error_t>(std::move(description));
     }
 
@@ -71,6 +73,7 @@ class Result {
     }
 
 class PicoMath {
+    friend Expression;
 
     struct Function {
         enum Type
@@ -82,59 +85,58 @@ class PicoMath {
         custom_function_1_t    f1;
     };
 
-    const char *                                 originalStr{};
-    const char *                                 str{};
     std::map<std::string, number_t, std::less<>> variables{};
     std::map<std::string, number_t, std::less<>> units{};
     std::map<std::string, Function, std::less<>> functions{};
 
   public:
+    /**
+     * @brief Adds a variable to the parsing context.
+     * PicoMath returns a reference to entry inside the map of variables, that can be changed
+     * during multiple evaluations
+     *
+     * @param name Name of the variable
+     * @return number_t& Reference to variable's value
+     */
     auto addVariable(const std::string &name) -> number_t & {
         return variables[name];
     }
 
+    /**
+     * @brief Adds a scale unit to the parsing context
+     * PicoMath returns a reference to entry inside the map of variables, that can be changed
+     * during multiple evaluations.
+     *
+     * @param name Name of the unit
+     * @return number_t& Reference to the unit's scale value
+     */
     auto addUnit(const std::string &name) -> number_t & {
         return units[name];
     }
 
-    auto addFunction(const std::string &name, custom_function_many_t func) {
+    /**
+     * @brief Adds a custom function to the parsing context
+     * This overload allows the user to pass a function that can handle multiple arguments.
+     *
+     * @param name Name of the function
+     * @param func Function pointer
+     */
+    auto addFunction(const std::string &name, custom_function_many_t func) -> void {
         auto &function = functions[name];
         function.type  = Function::Type::FunctionMany;
-        function.many = func;
+        function.many  = func;
     }
 
-    auto addFunction(const std::string &name, custom_function_1_t func) {
+    /**
+     * @brief Adds a custom function to the parsing context
+     *
+     * @param name Name of the function
+     * @param func Function pointer
+     */
+    auto addFunction(const std::string &name, custom_function_1_t func) -> void {
         auto &function = functions[name];
         function.type  = Function::Type::Function1;
-        function.f1 = func;
-    }
-
-    auto parseMultiExpression(const char *expression) -> Result {
-        originalStr = str = expression;
-        return parseExpression();
-    }
-
-    auto parseNext(Result *outResult) -> bool {
-        consumeSpace();
-        if (isEOF()) {
-            return false;
-        }
-        if (peek() == ',') {
-            consume();
-            consumeSpace();
-        }
-        *outResult = parseExpression();
-        return true;
-    }
-
-    auto parseExpression(const char *expression) -> Result {
-        originalStr = str = expression;
-        Result ret        = parseExpression();
-        consumeSpace();
-        if (PM_LIKELY(isEOF())) {
-            return ret;
-        }
-        return generateError("Invalid characters after expression");
+        function.f1    = func;
     }
 
     PicoMath() {
@@ -180,6 +182,65 @@ class PicoMath {
         });
     }
 
+    /**
+     * @brief Evaluates the expression and returns a value or an error if the expression is invalid
+     *
+     * @param expression Expression to evaluate
+     * @return Result Result containing the result value or an error
+     */
+    auto evalExpression(const char *expression) -> Result;
+
+    /**
+     * @brief Creates a Expression that can be used to evaluate multiple expression separated by commas.
+     *
+     * @param expression MultiExpression to evaluate
+     * @return Expression Expression object maintaining the context of the multi-evaluation
+     */
+    auto evalMultiExpression(const char *expression) -> Expression;
+};
+
+class Expression {
+    friend PicoMath;
+
+    const PicoMath &context;
+    const char *    originalStr{};
+    const char *    str{};
+
+    Expression(const PicoMath &context, const char *expression)
+        : context(context), originalStr(expression), str(expression) {
+    }
+
+    auto evalSingle() -> Result {
+        Result ret = evalExpression();
+        consumeSpace();
+        if (PM_LIKELY(isEOF())) {
+            return ret;
+        }
+        return generateError("Invalid characters after expression");
+    }
+
+  public:
+    /**
+     * @brief Evaluates the next expression in the multi expression context
+     *
+     * @param outResult Result of the evaluation
+     * @return true The evaluation succeeded and the outResult parameter contains a valid output value.
+     * @return false There are no more expressions to evaluate
+     */
+    auto evalNext(Result *outResult) -> bool {
+        consumeSpace();
+        if (isEOF()) {
+            return false;
+        }
+        *outResult = evalExpression();
+        consumeSpace();
+        if (peek() == ',') {
+            consume();
+            consumeSpace();
+        }
+        return true;
+    }
+
   private:
     auto generateError(const char *error, std::string_view identifier = {}) const -> Result {
         std::string out = "In character " + std::to_string(static_cast<int>(str - originalStr - 1)) + ": ";
@@ -196,7 +257,7 @@ class PicoMath {
         return out;
     }
 
-    auto parseExpression() -> Result {
+    PM_INLINE auto evalExpression() -> Result {
         consumeSpace();
         if (PM_UNLIKELY(isEOF())) {
             return generateError("Unexpected end of the string");
@@ -234,9 +295,9 @@ class PicoMath {
         return *str == 0;
     }
 
-    auto parseFunction(std::string_view identifier) -> Result {
-        auto f = functions.find(identifier);
-        if (PM_UNLIKELY(f == functions.end())) {
+    PM_INLINE auto parseFunction(std::string_view identifier) noexcept -> Result {
+        auto f = context.functions.find(identifier);
+        if (PM_UNLIKELY(f == context.functions.end())) {
             return generateError("Unknown function", identifier);
         }
 
@@ -252,11 +313,11 @@ class PicoMath {
                 if (PM_UNLIKELY(argc == PM_MAX_ARGUMENTS)) {
                     return generateError("Too many arguments");
                 }
-                Result argument = parseExpression();
+                Result argument = evalExpression();
                 if (PM_UNLIKELY(argument.isError())) {
                     return argument;
                 }
-                arguments.at(argc) = argument.result;
+                arguments[argc] = argument.result;
                 argc++;
                 consumeSpace();
                 if (peek() != ',') {
@@ -270,25 +331,25 @@ class PicoMath {
             return generateError("Expected ')'");
         }
         consume();
-        if (f->second.type == Function::Type::Function1) {
+
+        if (f->second.type == PicoMath::Function::Type::Function1) {
             if (PM_UNLIKELY(argc != 1)) {
                 return generateError("One argument required");
             }
             return {f->second.f1(arguments[0])};
-        } else {
-            Result ret = f->second.many(argc, arguments);
-            if (PM_UNLIKELY(ret.isError())) {
-                // Improve information in errors generated inside functions
-                return generateError(ret.getError(), identifier);
-            }
-            return ret;
         }
+        Result ret = f->second.many(argc, arguments);
+        if (PM_UNLIKELY(ret.isError())) {
+            // Improve information in errors generated inside functions
+            return generateError(ret.getError(), identifier);
+        }
+        return ret;
     }
 
     PM_INLINE auto parseParenthesized() -> Result {
         consume();
         consumeSpace();
-        Result exp = parseExpression();
+        Result exp = evalExpression();
         if (PM_UNLIKELY(exp.isError())) {
             return exp;
         }
@@ -314,7 +375,7 @@ class PicoMath {
         return unary;
     }
 
-    PM_INLINE auto parseVariableOrFunction() -> Result {
+    PM_INLINE auto parseVariableOrFunction() noexcept -> Result {
         const char *start = str;
         size_t      size  = 0;
         do {
@@ -328,14 +389,14 @@ class PicoMath {
             // function call
             return parseFunction(identifier);
         }
-        auto f = variables.find(identifier);
-        if (PM_UNLIKELY(f == variables.end())) {
+        auto f = context.variables.find(identifier);
+        if (PM_UNLIKELY(f == context.variables.end())) {
             return generateError("Unknown variable", identifier);
         }
         return {f->second};
     }
 
-    PM_INLINE auto parseNumber() -> Result {
+    PM_INLINE auto parseNumber() noexcept -> Result {
         number_t ret = 0;
 
         while (isDigit()) {
@@ -368,8 +429,8 @@ class PicoMath {
 
             std::string_view identifier{start, size};
 
-            auto f = units.find(identifier);
-            if (PM_UNLIKELY(f == units.end())) {
+            auto f = context.units.find(identifier);
+            if (PM_UNLIKELY(f == context.units.end())) {
                 return generateError("Unknown unit", identifier);
             }
             ret = ret * f->second;
@@ -445,6 +506,15 @@ class PicoMath {
         return left;
     }
 };
+
+inline auto PicoMath::evalExpression(const char *expression) -> Result {
+    Expression exp(*this, expression);
+    return exp.evalSingle();
+}
+
+inline auto PicoMath::evalMultiExpression(const char *expression) -> Expression {
+    return {*this, expression};
+}
 
 } // namespace picomath
 #endif

@@ -33,7 +33,7 @@ using namespace picomath;
 
 PicoMath pm;
 
-auto result = pm.parseExpression("sqrt(100 - 20)");
+auto result = pm.evalExpression("sqrt(100 - 20)");
 if (result.isOk()) {
     double r = result.getResult();
     ...
@@ -53,7 +53,7 @@ auto &x = pm.addVariable("x");
 x = 0.0;
 while (x < 100.0) {
     // Same expression evaluated with different values of `x`
-    auto result = pm.parseExpression("x * x * x");
+    auto result = pm.evalExpression("x * x * x");
     if (result.isOk()) {
         double r = result.getResult();
         ...
@@ -73,7 +73,7 @@ PicoMath pm;
 pm.addUnit("km") = 1000.0;
 pm.addUnit("cm") = 0.01;
 
-auto result = pm.parseExpression("0.5km + 20cm");
+auto result = pm.evalExpression("0.5km + 20cm");
 if (result.isOk()) {
     double r = result.getResult();
     ...

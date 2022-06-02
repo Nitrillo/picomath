@@ -8,7 +8,7 @@ static void BM_simpleExpression(benchmark::State &state) // NOLINT google-runtim
 {
     picomath::PicoMath ctx;
     while (state.KeepRunning()) {
-        benchmark::DoNotOptimize(ctx.parseExpression("(2 + 2) * 4 / 10 - 20.02"));
+        benchmark::DoNotOptimize(ctx.evalExpression("(2 + 2) * 4 / 10 - 20.02"));
         benchmark::ClobberMemory();
     }
 }
@@ -27,7 +27,7 @@ static void BM_functions(benchmark::State &state) // NOLINT google-runtime-refer
 {
     picomath::PicoMath ctx;
     while (state.KeepRunning()) {
-        benchmark::DoNotOptimize(ctx.parseExpression("sqrt(cos(pi) + ceil(sin(pi)))"));
+        benchmark::DoNotOptimize(ctx.evalExpression("sqrt(cos(pi) + ceil(sin(pi)))"));
         benchmark::ClobberMemory();
     }
 }
@@ -37,7 +37,7 @@ static void BM_customUnit(benchmark::State &state) // NOLINT google-runtime-refe
     picomath::PicoMath ctx;
     ctx.addUnit("px") = 2.0;
     while (state.KeepRunning()) {
-        benchmark::DoNotOptimize(ctx.parseExpression("100px * 2"));
+        benchmark::DoNotOptimize(ctx.evalExpression("100px * 2"));
         benchmark::ClobberMemory();
     }
 }
@@ -50,8 +50,8 @@ static void BM_complexExpression(benchmark::State &state) // NOLINT google-runti
     ctx.addVariable("z") = 5.0;
     ctx.addVariable("w") = 7.0;
     while (state.KeepRunning()) {
-        benchmark::DoNotOptimize(ctx.parseExpression("((((x-(y/(z*w)))/(((x-y)*z)-w))/((((x+y)*z)-w)-((x+y)-(z*w))))/"
-                                                     "(((((x-y)*z)-w)*((x+y)-(z/w)))*(((x+y)-(z*w))+((x/y)+(z+w)))))"));
+        benchmark::DoNotOptimize(ctx.evalExpression("((((x-(y/(z*w)))/(((x-y)*z)-w))/((((x+y)*z)-w)-((x+y)-(z*w))))/"
+                                                    "(((((x-y)*z)-w)*((x+y)-(z/w)))*(((x+y)-(z*w))+((x/y)+(z+w)))))"));
         benchmark::ClobberMemory();
     }
 }
@@ -60,12 +60,13 @@ static void BM_multiExpression(benchmark::State &state) // NOLINT google-runtime
 {
     picomath::PicoMath ctx;
     while (state.KeepRunning()) {
-        auto result = ctx.parseMultiExpression("2 * 4, 2, (100 * 10), pow(2,8)");
-        do {
+        auto             expression = ctx.evalMultiExpression("2 * 4, 2, (100 * 10), pow(2,8)");
+        picomath::Result result;
+        while (expression.evalNext(&result)) {
             if (result.isOk()) {
                 benchmark::DoNotOptimize(result.getResult());
             }
-        } while (ctx.parseNext(&result));
+        }
         benchmark::ClobberMemory();
     }
 }

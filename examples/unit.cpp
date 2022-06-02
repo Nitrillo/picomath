@@ -3,7 +3,7 @@
 
 using PM = picomath::PicoMath;
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
+auto main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) -> int {
     PM pm;
 
     // Device pixel ratio: each virtual pixel = 2 pixels in screen
@@ -11,11 +11,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
     devicePixelRatio       = 2.0;
 
     // Container size 350px
-    auto & percentage = pm.addUnit("%");
-    percentage = 350.0 * devicePixelRatio / 100.0;
+    auto &percentage = pm.addUnit("%");
+    percentage       = 350.0 * devicePixelRatio / 100.0;
 
     // Calculate inner width with a 5px padding in each side
-    auto result = pm.parseExpression("100% -5px * 2");
+    auto result = pm.evalExpression("100% -5px * 2");
     if (result.isOk()) {
         std::cout << "Result: " << result.getResult() << std::endl;
     } else {
@@ -23,7 +23,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
     }
 
     // Calculate x position of 100px element centered in container
-    result = pm.parseExpression("50% - 100px/2");
+    result = pm.evalExpression("50% - 100px/2");
     if (result.isOk()) {
         std::cout << "Result: " << result.getResult() << std::endl;
     } else {
