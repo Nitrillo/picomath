@@ -1,10 +1,11 @@
 # PicoMath
 
-PicoMath is a header only C++ library to evaluate math expressions.
+PicoMath is a header-only C++ library for math expression evaluation. PicoMath is very fast, simple, and customizable.
 
-Initially created to evaluate CSS-like expressions for the Shinobit Engine, a proprietary 2D game engine.
+PicoMath was created to evaluate CSS-like expressions, like `"100% - 20px"`, in the UI layout engine of my 2D game engine, Shinobit Engine. The main design goal of the library is to evaluate the expressions one single time as fast as possible, as layout usually happens when a scene is loaded, or a new UI component is shown, but they are not usually evaluated every frame.
+Another goal was to make the library as simple as possible, the engine is compiled to WASM and size of the binary matters.
 
-This library is used in the MMO browser game [GoBattle.io](http://gobattle.io)
+This library is currently used in the MMO browser game [GoBattle.io](http://gobattle.io)
 
 ![Build status](https://github.com/Nitrillo/picomath/actions/workflows/ci.yml/badge.svg)
 

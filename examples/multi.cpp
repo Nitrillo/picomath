@@ -3,7 +3,7 @@
 
 using PM = picomath::PicoMath;
 
-auto main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) -> int {
+auto main() -> int {
     PM               pm;
     auto             expression = pm.evalMultiExpression("2 * 4, 2, .5 * .5 * .5, (100.003 * 10), pow(2,8)");
     picomath::Result result;
