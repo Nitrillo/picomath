@@ -3,7 +3,7 @@
 
 using PM = picomath::PicoMath;
 
-auto main([[maybe_unused]] int _argc, [[maybe_unused]] char **_argv) -> int {
+auto main() -> int {
     PM pm;
 
     pm.addFunction("avg", [](size_t argc, const picomath::argument_list_t &args) -> picomath::Result {

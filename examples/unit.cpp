@@ -3,7 +3,7 @@
 
 using PM = picomath::PicoMath;
 
-auto main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) -> int {
+auto main() -> int {
     PM pm;
 
     // Device pixel ratio: each virtual pixel = 2 pixels in screen
