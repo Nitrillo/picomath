@@ -30,7 +30,9 @@ auto main() -> int {
         std::cout << result.getError() << std::endl;
     }
 
-    pm.addFunction("rand", [](picomath::number_t input) -> picomath::number_t { return input * rand() / RAND_MAX; });
+    pm.addFunction("rand", [](picomath::number_t input) -> picomath::number_t {
+        return input * static_cast<picomath::number_t>(rand()) / static_cast<picomath::number_t>(RAND_MAX);
+    });
     result = pm.evalExpression("rand(100)");
     if (result.isOk()) {
         std::cout << "Result: " << result.getResult() << std::endl;

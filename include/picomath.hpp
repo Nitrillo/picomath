@@ -21,6 +21,12 @@
 
 namespace picomath {
 
+// Enable to use correct and precise float parsing
+// #define PM_USE_PRECISE_FLOAT_PARSING
+
+// Enable to use floats instead of doubles
+// #define PM_USE_FLOAT
+
 #ifndef PM_MAX_ARGUMENTS
 #define PM_MAX_ARGUMENTS 8
 #endif
@@ -35,8 +41,14 @@ class PicoMath;
 
 #ifdef PM_USE_FLOAT
 using number_t = float;
+#ifdef PM_USE_PRECISE_FLOAT_PARSING
+#define PM_STR_TO_FLOAT strtof
+#endif
 #else
 using number_t = double;
+#ifdef PM_USE_PRECISE_FLOAT_PARSING
+#define PM_STR_TO_FLOAT strtod
+#endif
 #endif
 using argument_list_t        = std::array<number_t, PM_MAX_ARGUMENTS>;
 using error_t                = std::string;
@@ -305,6 +317,18 @@ class Expression {
         return *str == 0;
     }
 
+    [[nodiscard]] PM_INLINE auto isSign() const -> bool {
+        return *str == '+' || *str == '-';
+    }
+
+    [[nodiscard]] PM_INLINE auto isExponent() const -> bool {
+        // This doesn't read out of bounds because:
+        // if first character is 'e' or 'E', next character can be a valid character
+        // or zero if it's the end of the string
+        return (*str == 'e' || *str == 'E') &&
+               (*(str + 1) == '+' || *(str + 1) == '-' || (*(str + 1) >= '0' && *(str + 1) <= '9'));
+    }
+
     PM_INLINE auto parseFunction(std::string_view identifier) noexcept -> Result {
         auto f = context.functions.find(identifier);
         if (PM_UNLIKELY(f == context.functions.end())) {
@@ -409,9 +433,17 @@ class Expression {
     PM_INLINE auto parseNumber() noexcept -> Result {
         number_t ret = 0;
 
-        while (isDigit()) {
-            ret *= 10;
-            ret += *str - '0';
+#if defined(PM_USE_PRECISE_FLOAT_PARSING)
+        char *end;
+        ret = PM_STR_TO_FLOAT(str, &end);
+        if (PM_UNLIKELY(errno == ERANGE)) {
+            std::string_view identifier{str, static_cast<size_t>(end - str)};
+            return generateError("Float out of range", identifier);
+        }
+        str = end;
+#else
+        while (PM_LIKELY(isDigit())) {
+            ret = ret * 10 + (*str - '0');
             consume();
         }
         // Decimal point
@@ -424,7 +456,22 @@ class Expression {
                 consume();
             }
         }
-
+        if (PM_UNLIKELY(isExponent())) {
+            consume();
+            bool sign = false;
+            if (isSign()) {
+                if (consume() == '-') {
+                    sign = true;
+                }
+            }
+            int exp = 0;
+            while (PM_LIKELY(isDigit())) {
+                exp = exp * 10 + (*str - '0');
+                consume();
+            }
+            ret *= std::pow(static_cast<number_t>(10), sign ? -exp : exp);
+        }
+#endif
         // Space before units
         consumeSpace();
 
