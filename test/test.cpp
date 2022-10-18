@@ -21,6 +21,9 @@ TEST_CASE("Simple expressions") {
     REQUIRE(AreSame(ctx.evalExpression("2.003 * 1000").getResult(), 2003.0));
     REQUIRE(AreSame(ctx.evalExpression(".1234").getResult(), 0.1234));
     REQUIRE(AreSame(ctx.evalExpression("123.1234").getResult(), 123.1234));
+    REQUIRE(AreSame(ctx.evalExpression("5e+7").getResult(), 50000000.0));
+    REQUIRE(AreSame(ctx.evalExpression("5e7").getResult(), 50000000.0));
+    REQUIRE(AreSame(ctx.evalExpression("5.0E-7").getResult(), 0.00000049999999873762));
     REQUIRE(AreSame(ctx.evalExpression("-(2+2)").getResult(), -4));
     REQUIRE(ctx.evalExpression("(2+2)").isOk());
     REQUIRE_FALSE(ctx.evalExpression("(2+2)").isError());
@@ -62,6 +65,9 @@ TEST_CASE("Custom units") {
     REQUIRE(AreSame(ctx.evalExpression("1km").getResult(), 1000.0));
     REQUIRE(AreSame(ctx.evalExpression("100km").getResult(), 100000.0));
     REQUIRE(AreSame(ctx.evalExpression("100km - 10").getResult(), 100000.0 - 10.0));
+
+    ctx.addUnit("em") = 10.0;
+    REQUIRE(AreSame(ctx.evalExpression("1em").getResult(), 10.0));
 }
 
 TEST_CASE("Invalid expressions") {
